@@ -2,3 +2,6 @@
 *.avi
 *.mov
 *.mkv
+.env
+cert.pem
+key.pem
