@@ -12,6 +12,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { CameraCreate } from "../CameraCreate";
 import { useNavigate, useLocation } from "react-router-dom";
+import api from "../../api";
 
 interface Camera {
   id: string;
@@ -31,19 +32,16 @@ export const ListLight = (): JSX.Element => {
   const navigate = useNavigate();
   const location = useLocation();
   
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
+
 
   const fetchCameras = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/cameras");
+      setIsUnauthorized(false);
+      const response = await api.get("/cameras");
       
-      if (!response.ok) {
-        throw new Error(`Ошибка загрузки: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      const formattedCameras = data.map((cam: any) => ({
+      const formattedCameras = response.data.map((cam: any) => ({
         id: cam.id,
         name: cam.name,
         image: cam.url || 'https://static.vecteezy.com/system/resources/previews/001/213/234/large_2x/interface-viewfinder-digital-camera-vector.jpg',
@@ -54,8 +52,13 @@ export const ListLight = (): JSX.Element => {
 
       setCameras(formattedCameras);
       setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Неизвестная ошибка');
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setIsUnauthorized(true);
+        setError("Для просмотра камер необходимо авторизоваться");
+      } else {
+        setError(err instanceof Error ? err.message : 'Неизвестная ошибка');
+      }
       console.error("Ошибка загрузки камер:", err);
     } finally {
       setLoading(false);
@@ -68,25 +71,21 @@ export const ListLight = (): JSX.Element => {
     }
   }, [location.pathname]);
 
-  const handleAddCamera = async (newCamera: { name: string; url: string; protocol: string }) => {
+  const handleAddCamera = async (newCamera: { 
+    name: string; 
+    url: string; 
+    protocol: string; 
+    description: string; 
+    tags: string[] 
+  }) => {
     try {
-      const response = await fetch('http://localhost:5000/add_camera', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newCamera),
-      });
-
-      if (!response.ok) {
-        throw new Error('Ошибка при добавлении камеры');
-      }
-
+      await api.post('/add_camera', newCamera);
       if (location.pathname === '/cameras') {
         await fetchCameras();
       }
     } catch (err) {
-      console.error('Ошибка:', err);
+      console.error('Ошибка при добавлении камеры:', err);
+      throw err;
     }
   };
 
@@ -95,20 +94,14 @@ export const ListLight = (): JSX.Element => {
     try {
       const confirmed = window.confirm("Вы уверены, что хотите удалить камеру?");
       if (!confirmed) return;
-  
-      const response = await fetch(`http://127.0.0.1:5000/delete_camera/${cameraId}`, {
-        method: "DELETE",
-      });
-  
-      if (!response.ok) {
-        throw new Error("Ошибка при удалении камеры");
-      }
-  
-      setCameras((prev) => prev.filter((cam) => cam.id !== cameraId));
+
+      await api.delete(`/delete_camera/${cameraId}`);
+      setCameras(prev => prev.filter(cam => cam.id !== cameraId));
     } catch (error) {
-      console.error("Ошибка при удалении камеры:", error);
+      console.error('Ошибка при удалении камеры:', error);
     }
   };
+
   
 
   const getTimeAgo = (date: Date): string => {
@@ -133,6 +126,20 @@ export const ListLight = (): JSX.Element => {
   const filteredCameras = cameras.filter(camera =>
     camera.name.toLowerCase().includes(searchQuery.toLowerCase()) 
   );
+
+  if (isUnauthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="text-xl mb-4">Для доступа к камерам необходимо авторизоваться</div>
+        <a
+          href="http://localhost:5000/login/yandex"
+          className="bg-[#2094f3] text-white px-4 py-2 rounded-xl text-sm font-bold"
+        >
+          Войти через Яндекс
+        </a>
+      </div>
+    );
+  }
 
   if (loading && cameras.length === 0) {
     return <div className="flex justify-center items-center h-screen">Загрузка...</div>;

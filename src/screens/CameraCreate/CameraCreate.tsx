@@ -6,7 +6,7 @@ import { Input } from "../../components/ui/input";
 
 interface CameraCreateProps {
   onClose: () => void;
-  onAdd: (camera: { name: string; url: string; protocol: string }) => Promise<void>;
+  onAdd: (camera: { name: string; url: string; protocol: string; description: string; tags: string[] }) => Promise<void>;
 }
 
 export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element => {
@@ -19,6 +19,8 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tagsError, setTagsError] = useState<string | null>(null);
+
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
 
   const MAX_TAGS = 5;
 
@@ -64,15 +66,36 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
         name,
         url,
         protocol: selectedProtocol,
+        description,       
+        tags: cameraTags,
       });
       onClose();
-    } catch (err) {
-      setError("Ошибка при сохранении камеры");
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setIsUnauthorized(true);
+        setError("Для добавления камеры необходимо авторизоваться");
+      } else {
+        setError("Ошибка при сохранении камеры");
+      }
       console.error("Ошибка при сохранении:", err);
     } finally {
       setIsSaving(false);
     }
   };
+
+  if (isUnauthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6">
+        <div className="text-xl mb-4">Для добавления камеры необходимо авторизоваться</div>
+        <a
+          href="http://localhost:5000/login/yandex"
+          className="bg-[#2094f3] text-white px-4 py-2 rounded-xl text-sm font-bold"
+        >
+          Войти через Яндекс
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-start relative self-stretch w-full flex-[0_0_auto] bg-white rounded-2xl">

@@ -11,6 +11,7 @@ import {
   import { Card, CardContent } from "../../components/ui/card";
   import { Input } from "../../components/ui/input";
   import { useParams } from "react-router-dom";
+  import api from "../../api";
 
   import {
     Tabs,
@@ -49,10 +50,19 @@ import {
     const [camera, setCamera] = useState<any>(null);
 
     useEffect(() => {
-      fetch(`http://127.0.0.1:5000/get_camera/${id}`)
-        .then((res) => res.json())
-        .then((data) => setCamera(data))
-        .catch((err) => console.error("Ошибка при загрузке камеры", err));
+      const fetchCamera = async () => {
+        try {
+          const response = await api.get(`/get_camera/${id}`);
+          setCamera(response.data);
+        } catch (error) {
+          console.error("Ошибка при загрузке камеры", error);
+          if ((error as any).response?.status === 401) {
+            window.location.href = '/login';
+          }
+        }
+      };
+  
+      fetchCamera();
     }, [id]);
   
     if (!camera) return <div className="p-4">Загрузка камеры...</div>;
