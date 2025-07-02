@@ -1,19 +1,18 @@
 import { Link, useLocation } from "react-router-dom";
-import { SearchIcon } from "lucide-react";
+import { XIcon, MailIcon, SendIcon } from "lucide-react";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api";
-import { useNavigate } from "react-router-dom"; // Добавьте этот импорт
 
 export const Header = (): JSX.Element => {
   const location = useLocation();
-  const navigate = useNavigate();
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const navItems = [
-    { name: "Главная", path: "/", width: "w-20" },
+    { name: "Главная", path: "/home", width: "w-20" },
     { name: "Камеры", path: "/cameras", width: "w-[68px]" },
-    { name: "Профиль", path: "/profile", width: "w-20" },
-    { name: "Отчеты", path: "/reports", width: "w-[67px]" },
   ];
 
   type User = {
@@ -23,20 +22,15 @@ export const Header = (): JSX.Element => {
     avatar?: string;
   };
 
-  const isOnCamerasPage = location.pathname === '/cameras';
-
-  const [user, setUser] = useState<User | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const isOnCamerasPage = location.pathname === "/cameras";
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Проверяем, есть ли пользователь
         const userResponse = await api.get("/me");
         setUser(userResponse.data);
-        
-        // Убеждаемся, что CSRF-токен есть
-        if (!document.cookie.includes('csrf_token=')) {
+
+        if (!document.cookie.includes("csrf_token=")) {
           try {
             await api.get("/csrf-token");
           } catch (error) {
@@ -47,22 +41,53 @@ export const Header = (): JSX.Element => {
         setUser(null);
       }
     };
-  
-    // Проверяем авторизацию при загрузке
+
     checkAuth();
   }, [location.pathname]);
 
+  // const logout = async () => {
+  //   try {
+  //     await api.get("/logout");
+  //     setUser(null);
+  //     setIsModalOpen(false);
+  //     window.location.reload();
+  //   } catch (error) {
+  //     console.error("Logout failed:", error);
+  //   }
+  // };
+
 
   const logout = async () => {
-    try {
-      await api.get("/logout");
-      setUser(null);
-      setIsModalOpen(false);
-      window.location.reload();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+  try {
+    // 1. Отправляем запрос на бэкенд для очистки сессии
+    await api.get("/logout", { withCredentials: true });
+
+    // 2. Очищаем локальное состояние
+    setUser(null);
+    setIsModalOpen(false);
+
+    // 3. Очищаем все возможные хранилища
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 4. Очищаем куки фронтенда
+    document.cookie.split(';').forEach(cookie => {
+      const [name] = cookie.trim().split('=');
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+    });
+
+    // 5. Перенаправляем на Яндекс для полного выхода
+    window.location.href = 'https://passport.yandex.ru/passport?mode=logout&retpath=' + 
+      encodeURIComponent(window.location.origin);
+    
+  } catch (error) {
+    console.error("Logout failed:", error);
+    // Fallback: принудительная перезагрузка даже при ошибке
+    window.location.href = '/';
+  }
+};
+
+ 
 
   const toggleModal = () => {
     setIsModalOpen(!isModalOpen);
@@ -86,7 +111,9 @@ export const Header = (): JSX.Element => {
           <Link
             key={item.name}
             to={item.path}
-            className={`${item.width} h-[21px] mx-5 [font-family:'Roboto_Mono',Helvetica] font-bold text-[#111518] text-base text-center tracking-[0] leading-[21px] ${
+            className={`${
+              item.width
+            } h-[21px] mx-5 [font-family:'Roboto_Mono',Helvetica] font-bold text-[#111518] text-base text-center tracking-[0] leading-[21px] ${
               location.pathname === item.path ? "text-[#2094f3]" : ""
             }`}
           >
@@ -94,20 +121,10 @@ export const Header = (): JSX.Element => {
           </Link>
         ))}
       </nav>
-    
+
       <div className="flex items-center ml-auto mr-10">
         {!isOnCamerasPage && (
           <>
-            <div className="flex h-10 rounded-xl overflow-hidden mr-8">
-              <div className="w-10 h-10 bg-[#f0f2f5] rounded-[12px_0px_0px_12px] flex items-center justify-center">
-                <SearchIcon className="w-6 h-6" />
-              </div>
-              <Input
-                className="w-[215px] h-10 bg-[#f0f2f5] rounded-[0px_12px_12px_0px] border-none [font-family:'Space_Grotesk',Helvetica] text-[#60778a]"
-                placeholder="Поиск"
-              />
-            </div>
-
             <Link to="/cameras">
               <Button className="w-[111px] h-10 bg-[#2094f3] rounded-xl mr-8">
                 <span className="[font-family:'Space_Grotesk',Helvetica] font-bold text-white text-sm text-center tracking-[0.21px] leading-[21px]">
@@ -117,14 +134,15 @@ export const Header = (): JSX.Element => {
             </Link>
           </>
         )}
-        
+
         <Button
           variant="outline"
           className="w-10 h-10 bg-[#f0f2f5] rounded-xl p-0 mr-2 border-none"
+          onClick={() => setIsHelpModalOpen(true)}
         >
           <img
             className="w-5 h-5"
-            alt="Notification"
+            alt="Help"
             src="https://c.animaapp.com/mb9kw0qudYRMkO/img/svg.svg"
           />
         </Button>
@@ -140,12 +158,6 @@ export const Header = (): JSX.Element => {
           />
         </Button>
 
-        {/* <img
-          className="w-10 h-10 object-cover rounded-full"
-          alt="User"
-          src="https://c.animaapp.com/mb9kw0qudYRMkO/img/image.png"
-        /> */}
-
         {user ? (
           <img
             onClick={toggleModal}
@@ -160,47 +172,131 @@ export const Header = (): JSX.Element => {
         ) : (
           <a
             href="http://localhost:5000/login/yandex"
-            className="bg-[#2094f3] text-white px-4 py-2 rounded-xl text-sm font-bold"
+            className="flex items-center justify-center p-2 rounded-xl hover:opacity-80 transition-opacity"
           >
-            Войти через Яндекс
+            <img
+              src="/ya_favicon.svg"
+              alt="Войти через Яндекс"
+              className="h-10 w-10"
+            />
           </a>
         )}
       </div>
 
       {isModalOpen && user && (
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
-        onClick={() => setIsModalOpen(false)}
-      >
         <div
-          className="bg-white p-6 rounded-lg max-w-sm w-full"
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+          onClick={() => setIsModalOpen(false)}
         >
-          <h2 className="text-xl font-bold mb-4">Профиль пользователя</h2>
-          <div className="flex items-center mb-4">
-            <img
-              className="w-16 h-16 rounded-full object-cover mr-4"
-              src={user.avatar ? user.avatar : "https://c.animaapp.com/mb9kw0qudYRMkO/img/image.png"}
-              alt="User Avatar"
-            />
-            <div>
-              <p><b>Имя:</b> {user.name}</p>
-              <p><b>Email:</b> {user.email}</p>
-              <p><b>Пол:</b> {user.gender}</p>
+          <div
+            className="bg-white p-8 rounded-xl w-full max-w-md" // Увеличил размеры и padding
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">
+                Профиль пользователя
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex items-start mb-6">
+              <img
+                className="w-24 h-24 rounded-full object-cover mr-8 border-2 border-gray-200" // Увеличил аватар до 96x96px
+                src={
+                  user.avatar
+                    ? user.avatar
+                    : "https://c.animaapp.com/mb9kw0qudYRMkO/img/image.png"
+                }
+                alt="User Avatar"
+              />
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <p className="text-lg text-gray-800">
+                    <span className="font-semibold">Имя:</span> {user.name}
+                  </p>
+                </div>
+                <div className="flex items-center">
+                  <p className="text-lg text-gray-800">
+                    <span className="font-semibold">Email:</span> {user.email}
+                  </p>
+                </div>
+                <div className="flex items-center">
+                  <p className="text-lg text-gray-800">
+                    <span className="font-semibold">Пол:</span>{" "}
+                    {user.gender === "male" ? "Мужской" : "Женский"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={logout}
+                className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Выйти
+              </button>
             </div>
           </div>
-          <button
-            onClick={logout}
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-          >
-            Выйти
-          </button>
         </div>
-      </div>
-    )}
-    
-    </header>
+      )}
 
-          
+      {isHelpModalOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+          onClick={() => setIsHelpModalOpen(false)}
+        >
+          <div
+            className="bg-white p-8 rounded-xl w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">
+                Нужна помощь?
+              </h2>
+              <button
+                onClick={() => setIsHelpModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            <p className="text-lg text-gray-600 mb-6">
+              Если у вас возникли проблемы с сервисом, свяжитесь со мной:
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <MailIcon className="w-6 h-6 text-gray-500 mr-3" />
+                <a
+                  href="mailto:yavorskij_vi@edu.surgu.ru"
+                  className="text-lg text-blue-600 hover:underline"
+                >
+                  yavorskij_vi@edu.surgu.ru
+                </a>
+              </div>
+
+              <div className="flex items-center">
+                <SendIcon className="w-6 h-6 text-gray-500 mr-3" />
+                <a
+                  href="https://t.me/nethellone"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lg text-blue-600 hover:underline"
+                >
+                  @nethellone
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </header>
   );
 };

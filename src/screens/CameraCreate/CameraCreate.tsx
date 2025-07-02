@@ -1,15 +1,24 @@
 import { XIcon, PlusIcon } from "lucide-react";
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 
 interface CameraCreateProps {
   onClose: () => void;
-  onAdd: (camera: { name: string; url: string; protocol: string; description: string; tags: string[] }) => Promise<void>;
+  onAdd: (camera: {
+    name: string;
+    url: string;
+    protocol: string;
+    description: string;
+    tags: string[];
+  }) => Promise<void>;
 }
 
-export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element => {
+export const CameraCreate = ({
+  onClose,
+  onAdd,
+}: CameraCreateProps): JSX.Element => {
   const [selectedProtocol, setSelectedProtocol] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -19,8 +28,8 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tagsError, setTagsError] = useState<string | null>(null);
-
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const protocolOptions = ["RTSP", "HTTP"];
 
   const MAX_TAGS = 5;
 
@@ -45,8 +54,6 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
     }
   };
 
-  const protocolOptions = ["RTSP", "HTTP"];
-
   const handleProtocolSelect = (protocol: string) => {
     setSelectedProtocol(protocol);
   };
@@ -66,7 +73,7 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
         name,
         url,
         protocol: selectedProtocol,
-        description,       
+        description,
         tags: cameraTags,
       });
       onClose();
@@ -86,7 +93,9 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
   if (isUnauthorized) {
     return (
       <div className="flex flex-col items-center justify-center p-6">
-        <div className="text-xl mb-4">Для добавления камеры необходимо авторизоваться</div>
+        <div className="text-xl mb-4">
+          Для добавления камеры необходимо авторизоваться
+        </div>
         <a
           href="http://localhost:5000/login/yandex"
           className="bg-[#2094f3] text-white px-4 py-2 rounded-xl text-sm font-bold"
@@ -108,9 +117,7 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
           </div>
 
           {error && (
-            <div className="px-4 text-red-500 text-sm mb-2">
-              {error}
-            </div>
+            <div className="px-4 text-red-500 text-sm mb-2">{error}</div>
           )}
 
           <div className="flex flex-col w-full gap-3 px-4">
@@ -122,7 +129,7 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
                 placeholder="Название камеры*"
               />
             </div>
-            
+
             <div className="flex flex-col w-full">
               <Input
                 value={url}
@@ -131,7 +138,7 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
                 placeholder="Ссылка на камеру*"
               />
             </div>
-            
+
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-500">Протокол*</span>
               <div className="flex flex-wrap items-start gap-3 w-full">
@@ -140,8 +147,8 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
                     key={protocol}
                     variant="outline"
                     className={`h-11 px-4 py-0 rounded-xl border border-solid ${
-                      selectedProtocol === protocol 
-                        ? "border-[#2193f2] bg-[#2193f2] text-white" 
+                      selectedProtocol === protocol
+                        ? "border-[#2193f2] bg-[#2193f2] text-white"
                         : "border-[#dbe0e5] bg-white"
                     }`}
                     onClick={() => handleProtocolSelect(protocol)}
@@ -153,7 +160,7 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
                 ))}
               </div>
             </div>
-            
+
             <div className="flex flex-col w-full">
               <Input
                 value={description}
@@ -162,13 +169,13 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
                 placeholder="Описание"
               />
             </div>
-            
+
             <div className="flex flex-col w-full">
               <div className="items-start w-full rounded-xl flex relative">
                 <Input
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
                   className="h-14 pl-4 pr-2 py-4 mr-[5px] flex-1 grow rounded-l-xl bg-[#eff2f4]"
                   placeholder={`Тэги (максимум ${MAX_TAGS})`}
                 />
@@ -182,9 +189,7 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
                 </Button>
               </div>
               {tagsError && (
-                <div className="text-red-500 text-xs mt-1">
-                  {tagsError}
-                </div>
+                <div className="text-red-500 text-xs mt-1">{tagsError}</div>
               )}
               <div className="text-xs text-gray-500 mt-1">
                 {cameraTags.length}/{MAX_TAGS} тегов
@@ -197,8 +202,10 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
                   key={index}
                   className="inline-flex h-14 items-center gap-4 px-4 bg-[#2193f2] rounded-xl"
                 >
-                  <span className="font-normal text-white text-base leading-6 
-                  [font-family:'Space_Grotesk',Helvetica]">
+                  <span
+                    className="font-normal text-white text-base leading-6 
+                  [font-family:'Space_Grotesk',Helvetica]"
+                  >
                     {tag}
                   </span>
                   <Button
@@ -221,18 +228,22 @@ export const CameraCreate = ({ onClose, onAdd }: CameraCreateProps): JSX.Element
               onClick={onClose}
               disabled={isSaving}
             >
-              <span className="font-bold text-[#111416] text-sm text-center 
-              leading-[21px] [font-family:'Space_Grotesk',Helvetica] tracking-[0]">
+              <span
+                className="font-bold text-[#111416] text-sm text-center 
+              leading-[21px] [font-family:'Space_Grotesk',Helvetica] tracking-[0]"
+              >
                 Отмена
               </span>
             </Button>
-            <Button 
+            <Button
               className="w-[105px] h-10 bg-[#2193f2] rounded-xl"
               onClick={handleSave}
               disabled={isSaving}
             >
-              <span className="font-bold text-white text-sm text-center 
-              leading-[21px] [font-family:'Space_Grotesk',Helvetica] tracking-[0]">
+              <span
+                className="font-bold text-white text-sm text-center 
+              leading-[21px] [font-family:'Space_Grotesk',Helvetica] tracking-[0]"
+              >
                 {isSaving ? "Сохранение..." : "Сохранить"}
               </span>
             </Button>

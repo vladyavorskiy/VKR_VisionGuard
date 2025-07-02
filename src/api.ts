@@ -5,9 +5,8 @@ const api: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-// Получаем CSRF-токен из куки
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    if (['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
+    if ([ 'post', 'put', 'delete', 'patch', 'options'].includes(config.method?.toLowerCase() || '')) {
         const csrfToken = document.cookie
           .split('; ')
           .find(row => row.startsWith('csrf_token='))
