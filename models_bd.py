@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Boolean, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -29,11 +29,44 @@ class Camera(Base):
     added_at = Column(DateTime)
 
     owner = relationship("User", back_populates="cameras")
+    detected_objects = relationship("DetectedObject", back_populates="camera", cascade="all, delete-orphan")
+    class_associations = relationship("CameraClassAssociation", back_populates="camera", cascade="all, delete-orphan")
+
+class DetectedObject(Base):
+    __tablename__ = "detected_objects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    camera_id = Column(Integer, ForeignKey("cameras.id"), nullable=False)
+    tracker_id = Column(Integer, nullable=False)  # ID из SORT трекера
+    object_class = Column(String(100), nullable=False)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=True)  # Может быть None, если объект ещё в кадре
+    image_path = Column(String, nullable=True)  # Путь к изображению первого появления
+    video_path = Column(String, nullable=True)
+
+    camera = relationship("Camera", back_populates="detected_objects")
+
+
+class Class(Base):
+    __tablename__ = "classes"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), unique=True, nullable=False)
+
+class CameraClassAssociation(Base):
+    __tablename__ = "camera_class_association"
+
+    id = Column(Integer, primary_key=True)
+    camera_id = Column(Integer, ForeignKey("cameras.id"))
+    class_id = Column(Integer, ForeignKey("classes.id"))
+
+    is_ignored = Column(Boolean, default=False)
+    is_notify = Column(Boolean, default=False)
+
+    camera = relationship("Camera", back_populates="class_associations")
+    object_class = relationship("Class")
 
 
 
-
-
-
-# from database import Base, engine
-# Base.metadata.create_all(bind=engine)
+from database import Base, engine
+Base.metadata.create_all(bind=engine)

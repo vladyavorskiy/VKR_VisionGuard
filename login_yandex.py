@@ -3,10 +3,19 @@ import requests
 from config import Config
 from database import SessionLocal
 from models_bd import User
-
 from flask_wtf.csrf import generate_csrf
 
 auth_bp = Blueprint("auth", __name__)
+
+
+# @auth_bp.route("/login/yandex")
+# def login_yandex():
+#     url = (
+#         f"https://oauth.yandex.ru/authorize?response_type=code"
+#         f"&client_id={Config.YANDEX_CLIENT_ID}"
+#         f"&redirect_uri={Config.REDIRECT_URI}"
+#     )
+#     return redirect(url)
 
 
 @auth_bp.route("/login/yandex")
@@ -15,6 +24,8 @@ def login_yandex():
         f"https://oauth.yandex.ru/authorize?response_type=code"
         f"&client_id={Config.YANDEX_CLIENT_ID}"
         f"&redirect_uri={Config.REDIRECT_URI}"
+        f"&force_confirm=1" 
+        f"&prompt=select_account"  # Всегда показывать выбор аккаунта
     )
     return redirect(url)
 
@@ -29,9 +40,6 @@ def callback_yandex():
     print("CLIENT_SECRET:", Config.YANDEX_CLIENT_SECRET)
     print("REDIRECT_URI:", Config.REDIRECT_URI)
 
-
-
-    # Получаем access_token
     token_url = "https://oauth.yandex.ru/token"
     data = {
         "grant_type": "authorization_code",
@@ -42,8 +50,6 @@ def callback_yandex():
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     token_response = requests.post(token_url, data=data, headers=headers)
-
-    # token_response = requests.post(token_url, data=data)
 
     if token_response.status_code != 200:
         return jsonify({"error": "Token exchange failed", "details": token_response.text}), 400
@@ -87,28 +93,59 @@ def callback_yandex():
         db.commit()
     db.close()
 
-    # return redirect("http://localhost:5173/")  # фронт-адрес после входа
-
-
     token = generate_csrf()
     response = redirect("http://localhost:5173/")
     response.set_cookie(
         'csrf_token',
         token,
         secure=False,
-        httponly=False,  # Должно быть доступно для чтения через JS
+        httponly=False,
         samesite='Lax'
     )
 
     return response
 
+# @auth_bp.route("/logout")
+# def logout():
+#     session.clear()
+#     response = jsonify({"message": "Logged out"})
+#     response.delete_cookie('session')
+#     response.delete_cookie('csrf_token')
+#     return response, 200
+
 @auth_bp.route("/logout")
 def logout():
+    # Полная очистка сессии и куков
     session.clear()
-    response = jsonify({"message": "Logged out"})
+
+    # Перенаправляем на Яндекс для полного выхода
+    yandex_logout_url = "https://passport.yandex.ru/passport?mode=logout"
+
+    response = redirect(yandex_logout_url)
+
+    # Очищаем все возможные куки
     response.delete_cookie('session')
     response.delete_cookie('csrf_token')
-    return response, 200
+    response.delete_cookie('yandexuid')
+    response.delete_cookie('Session_id')
+
+    # Дополнительно очищаем куки Яндекса
+    response.set_cookie(
+        'yandexuid',
+        '',
+        expires=0,
+        domain='.yandex.ru',
+        path='/'
+    )
+    response.set_cookie(
+        'Session_id',
+        '',
+        expires=0,
+        domain='.yandex.ru',
+        path='/'
+    )
+
+    return response
 
 
 @auth_bp.route("/me")
